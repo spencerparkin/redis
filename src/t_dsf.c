@@ -29,10 +29,10 @@
 
 #include "server.h"
 
-/* A quick explanation of Disjoint Set Forests (DSFs).
+/* A quick explanation of Disjoint Set Forests (DSFs)...
  *
- * A DSF is a collection of sets, each set a collection of values.
- * When a value is added to the DSF, it is placed in its own set,
+ * A DSF is a collection of sets, each set a collection of elements.
+ * When an element is added to the DSF, it is placed in its own set,
  * and then that set is placed in the DSF.  The main features of a
  * DSF are 1) the ability to quickly tell, given two elements in the DSF,
  * whether or not they belong to the same set; and 2) the ability to
