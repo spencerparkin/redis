@@ -247,7 +247,7 @@ void dsfaddCommand(client *c) {
         server.dirty += added;
     }
     
-    addReplayLongLong(c, added);
+    addReplyLongLong(c, added);
 }
 
 void dsfremCommand(client *c) {
@@ -270,7 +270,7 @@ void dsfremCommand(client *c) {
             deleted++;
             if (dsetfTypeSize(dsf) == 0) {
                 dbDelete(c->db, c->argv[1]);
-                notifyKeySpaceEvent(NOTIFY_GENERIC, "del", c->argv[1], c->db->id);
+                notifyKeyspaceEvent(NOTIFY_GENERIC, "del", c->argv[1], c->db->id);
                 break;
             }
         }
@@ -282,7 +282,7 @@ void dsfremCommand(client *c) {
         server.dirty += deleted;
     }
     
-    addReplayLongLong(c, deleted);
+    addReplyLongLong(c, deleted);
 }
 
 void dsfarecomembersCommand(client* c) {
