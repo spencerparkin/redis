@@ -279,8 +279,10 @@ robj *createModuleObject(moduleType *mt, void *value) {
 }
 
 robj* createDisjointSetForestObject(void) {
-    dict *d = dictCreate(&dsetfDictType,NULL);
-    robj *o = createObject(OBJ_DSF,d);
+    dsetf* dsf = zmalloc(sizeof(dsetf));
+    dsf->d = dictCreate(&dsetfDictType,NULL);
+    dsf->card = 0;
+    robj *o = createObject(OBJ_DSF,dsf);
     o->encoding = OBJ_ENCODING_HT;
     return o;
 }
@@ -351,7 +353,9 @@ void freeModuleObject(robj *o) {
 
 void freeDisjointSetObject(robj *o) {
     if (o->encoding == OBJ_ENCODING_HT) {
-        dictRelease((dict*)o->ptr);
+        dsetf* dsf = o->ptr;
+        dictRelease(dsf->d);
+        zfree(dsf);
     } else {
         serverPanic("Unknown DSF encoding type");
     }

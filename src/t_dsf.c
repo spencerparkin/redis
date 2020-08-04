@@ -42,6 +42,8 @@
  * which is likely O(ln N), where N is the number of elements in the dictionary.
  * The worst-case running time is O(N), but this is never repeated as the
  * data-structure will optimize itself with use.
+ *
+ * One application...
  */
 
 /*-----------------------------------------------------------------------------
@@ -56,20 +58,21 @@ robj *dsetfTypeCreate(void) {
     return createDisjointSetForestObject();
 }
 
-/* Add the specified value to the DSF as a singleton set.
+/* Add the specified element to the DSF as a member of its own singleton set.
  *
  * If the value was already in the DSF, nothing is done and 0 is
  * returned; otherwise, the new element is added and 1 is returned.
  */
 int dsetfTypeAdd(robj *subject, sds value) {
     if (subject->encoding == OBJ_ENCODING_HT) {
-        dict *d = subject->ptr;
-        dictEntry *de = dictAddRaw(d,value,NULL);
+        dsetf *dsf = subject->ptr;
+        dictEntry *de = dictAddRaw(dsf->d, value, NULL);
         if (de) {
-            dictSetKey(d,de,sdsdup(value)); /* Why? */
+            dictSetKey(dsf->d, de, sdsdup(value)); /* Why? */
             dsetf_element *dsf_ele = zmalloc(sizeof(dsetf_element));
             dsf_ele->rep = NULL;
-            dictSetVal(d,de,dsf_ele);
+            dictSetVal(dsf->d, de, dsf_ele);
+            dsf->card++;
             return 1;
         }
     } else {
@@ -78,13 +81,13 @@ int dsetfTypeAdd(robj *subject, sds value) {
     return 0;
 }
 
-/* Remove the specified value from the DSF.
+/* Remove the specified element from the DSF.
  *
  * If it was the member of a singleton, then the singleton set is
  * removed from the DSF also.  Note that this always has O(N)
  * time-complexity, where N is the number of elements in the DSF.
- * Consequently, this operation is provided here for completeness;
- * though, it is not common to use in practice.
+ * Consequently, this operation is provided here for completeness.
+ * It is not common to use in practice, nor is it encouraged.
  */
 int dsetfTypeRemove(robj* subject, sds value) {
     // TODO: Write this.  It involves iterating the entire DSF dictionary to patch pointers.
@@ -99,11 +102,11 @@ int dsetfTypeRemove(robj* subject, sds value) {
  */
 int dsetfTypeAreComembers(robj* subject, sds value_a, sds value_b) {
     if (subject->encoding == OBJ_ENCODING_HT) {
-        dict *d = subject->ptr;
-        dictEntry *de_a = dictFind(d,value_a);
+        dsetf* dsf = subject->ptr;
+        dictEntry *de_a = dictFind(dsf->d, value_a);
         if (!de_a)
             return -1;
-        dictEntry *de_b = dictFind(d,value_b);
+        dictEntry *de_b = dictFind(dsf->d, value_b);
         if (!de_b)
             return -1;
         return sameSetRep((dsetf_element*)de_a->v.val, (dsetf_element*)de_b->v.val);
@@ -122,11 +125,11 @@ int dsetfTypeAreComembers(robj* subject, sds value_a, sds value_b) {
  */
 int dsetfTypeMerge(robj* subject, sds value_a, sds value_b) {
     if (subject->encoding == OBJ_ENCODING_HT) {
-        dict* d = subject->ptr;
-        dictEntry* de_a = dictFind(d, value_a);
+        dsetf* dsf = subject->ptr;
+        dictEntry* de_a = dictFind(dsf->d, value_a);
         if (!de_a)
             return -1;
-        dictEntry* de_b = dictFind(d, value_b);
+        dictEntry* de_b = dictFind(dsf->d, value_b);
         if (!de_b)
             return -1;
         dsetf_element* rep_a = findSetRep((dsetf_element*)de_a->v.val);
@@ -136,6 +139,7 @@ int dsetfTypeMerge(robj* subject, sds value_a, sds value_b) {
         else {
             /* Arbitrarily choose A over B.  It does not matter which we choose. */
             rep_b->rep = rep_a;
+            dsf->card--;
             return 1;
         }
     } else {
@@ -152,8 +156,8 @@ int dsetfTypeMerge(robj* subject, sds value_a, sds value_b) {
  */
 int dsetfTypeRandomElement(robj *subject, sds *sdsele) {
     if(subject->encoding == OBJ_ENCODING_HT) {
-        dict *d = subject->ptr;
-        dictEntry *de = dictGetFairRandomKey(d);
+        dsetf *dsf = subject->ptr;
+        dictEntry *de = dictGetFairRandomKey(dsf->d);
         if (!de)
             return 0;
         *sdsele = dictGetKey(de);
@@ -164,11 +168,26 @@ int dsetfTypeRandomElement(robj *subject, sds *sdsele) {
     return 0;
 }
 
-/* Retrieve the size of the given DSF.
+/* Retrieve the number of atomic elements in the given DSF.
+ * Note that this is not the cardinality of the DSF.
  */
 unsigned long dsetfTypeSize(const robj* subject) {
     if (subject->encoding == OBJ_ENCODING_HT) {
-        return dictSize((const dict*)subject->ptr);
+        const dsetf* dsf = subject->ptr;
+        return dictSize(dsf->d);
+    } else {
+        serverPanic("Unknown DSF encoding");
+    }
+    return 0L;
+}
+
+/* Retrieve the number of set elements in the given DSF.
+ * This is the cardinality of the DSF.
+ */
+unsigned long dsetfTypeCard(const robj* subject) {
+    if (subject->encoding == OBJ_ENCODING_HT) {
+        const dsetf* dsf = subject->ptr;
+        return dsf->card;
     } else {
         serverPanic("Unknown DSF encoding");
     }
@@ -288,6 +307,22 @@ void dsfunionCommand(client *c) {
 }
 
 void dsfcardCommand(client *c) {
+    robj* dsf = lookupKeyRead(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        addReply(c, shared.czero);
+        return;
+    }
+
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    unsigned long card = dsetfTypeCard(dsf);
+    addReplyLongLong(c, card);
+}
+
+void dsfsizeCommand(client *c) {
     robj *dsf = lookupKeyRead(c->db, c->argv[1]);
     if (dsf == NULL) {
         addReply(c, shared.czero);

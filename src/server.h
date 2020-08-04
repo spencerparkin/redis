@@ -473,8 +473,8 @@ typedef long long ustime_t; /* microsecond time type. */
  * by a 64 bit module type ID, which has a 54 bits module-specific signature
  * in order to dispatch the loading to the right module, plus a 10 bits
  * encoding version. */
-#define OBJ_MODULE 5    /* Module object. */
-#define OBJ_STREAM 6    /* Stream object. */
+#define OBJ_MODULE 6    /* Module object. */
+#define OBJ_STREAM 7    /* Stream object. */
 
 /* Extract encver / signature from a module type ID. */
 #define REDISMODULE_TYPE_ENCVER_BITS 10
@@ -917,6 +917,11 @@ typedef struct zset {
 typedef struct dsetf_element {
     dsetf_element* rep;
 } dsetf_element;
+
+typedef struct dsetf {
+    dict *d;
+    unsigned long card;
+} dsetf;
 
 typedef struct clientBufferLimitsConfig {
     unsigned long long hard_limit_bytes;
@@ -2307,6 +2312,7 @@ void dsfremCommand(client *c);
 void dsfarecomembersCommand(client *c);
 void dsfunionCommand(client *c);
 void dsfcardCommand(client *c);
+void dsfsizeCommand(client *c);
 void syncCommand(client *c);
 void flushdbCommand(client *c);
 void flushallCommand(client *c);
