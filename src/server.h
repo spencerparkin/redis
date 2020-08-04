@@ -916,6 +916,7 @@ typedef struct zset {
 
 typedef struct dsetf_element {
     dsetf_element* rep;
+    unsigned int rank;
 } dsetf_element;
 
 typedef struct dsetf {

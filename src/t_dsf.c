@@ -79,6 +79,7 @@ int dsetfTypeAdd(robj *subject, sds value) {
             dictSetKey(dsf->d, de, sdsdup(value)); /* Why? */
             dsetf_element *dsf_ele = zmalloc(sizeof(dsetf_element));
             dsf_ele->rep = NULL;
+            dsf_ele->rank = 1;
             dictSetVal(dsf->d, de, dsf_ele);
             dsf->card++;
             return 1;
@@ -145,10 +146,27 @@ int dsetfTypeMerge(robj* subject, sds value_a, sds value_b) {
         if (rep_a == rep_b)
             return 0;
         else {
-            /* Arbitrarily choose A over B.  It does not matter which we choose. */
-            /* TODO: Add union-by-rank optimization. */
-            rep_b->rep = rep_a;
             dsf->card--;
+            /* For correctness, it doesn't matter whether A or B becomes
+             * the new representative of the set.  However, by using rank,
+             * we can make the choice between A and B so as to prevent the
+             * rank of the resulting union from growing.  The rank is a
+             * rough measure of (upper-bound on) how many jumps it takes
+             * to find the representative of a set in the DSF, given one
+             * of that set's elements.
+             */
+            if (rep_a->rank < rep_b->rank)
+                rep_a->rep = rep_b;
+            else if(rep_b->rank < rep_a->rank)
+                rep_b->rep = rep_a;
+            else
+            {
+                /* Here the choice to use A or B is arbitrary, but
+                 * we must bump up the rank.
+                 */
+                rep_a->rep = rep_b;
+                rep_b->rank++;
+            }
             return 1;
         }
     } else {
@@ -353,7 +371,10 @@ static dsetf_element *findSetRep(dsetf_element *ele) {
         rep = rep->rep;
     /* The following loop is not required for correctness and
      * is merely an optimization.  It does not add to the
-     * time-complexity of the operation. */
+     * time-complexity of the operation.  Also, this can
+     * technically change the rank of the set, but fixing
+     * it up would ruin the time-complexity of the operation.
+     */
     while (ele->rep)
     {
         dsetf_element *next_ele = ele->rep;
