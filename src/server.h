@@ -432,7 +432,8 @@ typedef long long ustime_t; /* microsecond time type. */
 #define NOTIFY_STREAM (1<<10)     /* t */
 #define NOTIFY_KEY_MISS (1<<11)   /* m (Note: This one is excluded from NOTIFY_ALL on purpose) */
 #define NOTIFY_LOADED (1<<12)     /* module only key space notification, indicate a key loaded from rdb */
-#define NOTIFY_ALL (NOTIFY_GENERIC | NOTIFY_STRING | NOTIFY_LIST | NOTIFY_SET | NOTIFY_HASH | NOTIFY_ZSET | NOTIFY_EXPIRED | NOTIFY_EVICTED | NOTIFY_STREAM) /* A flag */
+#define NOTIFY_DSF (1<<13)        /* d */
+#define NOTIFY_ALL (NOTIFY_GENERIC | NOTIFY_STRING | NOTIFY_LIST | NOTIFY_SET | NOTIFY_HASH | NOTIFY_ZSET | NOTIFY_EXPIRED | NOTIFY_EVICTED | NOTIFY_STREAM | NOTIFY_DSF) /* A flag */
 
 /* Get the first bind addr or NULL */
 #define NET_FIRST_BIND_ADDR (server.bindaddr_count ? server.bindaddr[0] : NULL)
@@ -2043,9 +2044,11 @@ void setTypeConvert(robj *subject, int enc);
 
 /* DSF data type */
 int dsetfTypeAdd(robj *subject, sds value);
+int dsetfTypeRemove(robj* subject, sds value);
 int dsetfTypeAreComembers(robj *subject, sds value_a, sds value_b);
 int dsetfTypeMerge(robj *subject, sds value_a, sds value_b);
 int dsetfTypeRandomElement(robj *subject, sds* sdsele);
+unsigned long dsetfTypeSize(const robj *subject);
 
 /* Hash data type */
 #define HASH_SET_TAKE_FIELD (1<<0)

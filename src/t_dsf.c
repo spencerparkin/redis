@@ -60,10 +60,6 @@ robj *dsetfTypeCreate(void) {
  *
  * If the value was already in the DSF, nothing is done and 0 is
  * returned; otherwise, the new element is added and 1 is returned.
- *
- * Note that unlike a set, a DSF does not support removal.
- * We *could* support removal, but it is not a fast operation,
- * nor is it a feature of what makes DSF data-structures useful.
  */
 int dsetfTypeAdd(robj *subject, sds value) {
     if (subject->encoding == OBJ_ENCODING_HT) {
@@ -79,6 +75,19 @@ int dsetfTypeAdd(robj *subject, sds value) {
     } else {
         serverPanic("Unknown DSF encoding");
     }
+    return 0;
+}
+
+/* Remove the specified value from the DSF.
+ *
+ * If it was the member of a singleton, then the singleton set is
+ * removed from the DSF also.  Note that this always has O(N)
+ * time-complexity, where N is the number of elements in the DSF.
+ * Consequently, this operation is provided here for completeness;
+ * though, it is not common to use in practice.
+ */
+int dsetfTypeRemove(robj* subject, sds value) {
+    // TODO: Write this.  It involves iterating the entire DSF dictionary to patch pointers.
     return 0;
 }
 
@@ -153,6 +162,145 @@ int dsetfTypeRandomElement(robj *subject, sds *sdsele) {
         serverPanic("Unknown DSF encoding");
     }
     return 0;
+}
+
+/* Retrieve the size of the given DSF.
+ */
+unsigned long dsetfTypeSize(const robj* subject) {
+    if (subject->encoding == OBJ_ENCODING_HT) {
+        return dictSize((const dict*)subject->ptr);
+    } else {
+        serverPanic("Unknown DSF encoding");
+    }
+    return 0L;
+}
+
+void dsfaddCommand(client *c) {
+    robj *dsf = NULL;
+    int j = 0, added = 0;
+
+    dsf = lookupKeyWrite(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        dsf = dsetfTypeCreate();
+        dbAdd(c->db, c->argv[1], dsf);
+    }
+
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    for (j = 2; j < c->argc; j++) {
+        if (dsetfTypeAdd(dsf, c->argv[j]->ptr))
+            added++;
+    }
+
+    if (added > 0) {
+        signalModifiedKey(c, c->db, c->argv[1]);
+        notifyKeyspaceEvent(NOTIFY_DSF, "dsfadd", c->argv[1], c->db->id);
+        server.dirty += added;
+    }
+    
+    addReplayLongLong(c, added);
+}
+
+void dsfremCommand(client *c) {
+    robj *dsf = NULL;
+    int j = 0, deleted = 0;
+
+    dsf = lookupKeyWrite(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        addReply(c, shared.czero);
+        return;
+    }
+    
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    for (j = 2; j < c->argc; j++) {
+        if (dsetfTypeRemove(dsf, c->argv[j]->ptr)) {
+            deleted++;
+            if (dsetfTypeSize(dsf) == 0) {
+                dbDelete(c->db, c->argv[1]);
+                notifyKeySpaceEvent(NOTIFY_GENERIC, "del", c->argv[1], c->db->id);
+                break;
+            }
+        }
+    }
+
+    if (deleted > 0) {
+        signalModifiedKey(c, c->db, c->argv[1]);
+        notifyKeyspaceEvent(NOTIFY_DSF, "dsfrem", c->argv[1], c->db->id);
+        server.dirty += deleted;
+    }
+    
+    addReplayLongLong(c, deleted);
+}
+
+void dsfarecomembersCommand(client* c) {
+    robj *dsf = lookupKeyRead(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        addReply(c, shared.czero);
+        return;
+    }
+    
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    if (dsetfTypeAreComembers(dsf, c->argv[2]->ptr, c->argv[3]->ptr))
+        addReply(c, shared.cone);
+    else
+        addReply(c, shared.czero);
+}
+
+void dsfunionCommand(client *c) {
+    int added = 0;
+    
+    robj *dsf = lookupKeyWrite(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        dsf = dsetfTypeCreate();
+        dbAdd(c->db, c->argv[1], dsf);
+        if (1 == dsetfTypeAdd(dsf, c->argv[2]->ptr))
+            added++;
+        if (1 == dsetfTypeAdd(dsf, c->argv[3]->ptr))
+            added++;
+    }
+
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    if (added > 0) {
+        signalModifiedKey(c, c->db, c->argv[1]);
+        notifyKeyspaceEvent(NOTIFY_DSF, "dsfunion", c->argv[1], c->db->id);
+        server.dirty += added;
+    }
+
+    if (1 == dsetfTypeMerge(dsf, c->argv[2]->ptr, c->argv[3]->ptr))
+        addReply(c, shared.cone);
+    else
+        addReply(c, shared.czero);
+}
+
+void dsfcardCommand(client *c) {
+    robj *dsf = lookupKeyRead(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        addReply(c, shared.czero);
+        return;
+    }
+
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    unsigned long size = dsetfTypeSize(dsf);
+    addReplyLongLong(c, size);
 }
 
 static dsetf_element *findSetRep(dsetf_element *ele) {
