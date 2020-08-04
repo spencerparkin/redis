@@ -915,7 +915,7 @@ typedef struct zset {
 /* Disjoint Set Forests */
 
 typedef struct dsetf_element {
-    dsetf_element* rep;
+    struct dsetf_element* rep;
     unsigned int rank;
 } dsetf_element;
 
