@@ -101,6 +101,7 @@ int dsetfTypeAreComembers(robj* subject, sds value_a, sds value_b) {
     } else {
         serverPanic("Unkown DSF encoding");
     }
+    return 0;
 }
 
 /* Merge or unionize the sets containing the two given elements.
@@ -128,6 +129,26 @@ int dsetfTypeMerge(robj* subject, sds value_a, sds value_b) {
             rep_b->rep = rep_a;
             return 1;
         }
+    } else {
+        serverPanic("Unknown DSF encoding");
+    }
+    return 0;
+}
+
+/* Retrieve a random element from the DSF.
+ *
+ * 1 is returned and the given string is populated if the DSF
+ * is non-empty; otherwise, zero is returned and the given
+ * string is left untouched.
+ */
+int dsetfTypeRandomElement(robj *subject, sds *sdsele) {
+    if(subject->encoding == OBJ_ENCODING_HT) {
+        dict *d = subject->ptr;
+        dictEntry *de = dictGetFairRandomKey(d);
+        if (!de)
+            return 0;
+        *sdsele = dictGetKey(de);
+        return 1;
     } else {
         serverPanic("Unknown DSF encoding");
     }

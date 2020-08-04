@@ -2041,6 +2041,12 @@ unsigned long setTypeRandomElements(robj *set, unsigned long count, robj *aux_se
 unsigned long setTypeSize(const robj *subject);
 void setTypeConvert(robj *subject, int enc);
 
+/* DSF data type */
+int dsetfTypeAdd(robj *subject, sds value);
+int dsetfTypeAreComembers(robj *subject, sds value_a, sds value_b);
+int dsetfTypeMerge(robj *subject, sds value_a, sds value_b);
+int dsetfTypeRandomElement(robj *subject, sds* sdsele);
+
 /* Hash data type */
 #define HASH_SET_TAKE_FIELD (1<<0)
 #define HASH_SET_TAKE_VALUE (1<<1)
