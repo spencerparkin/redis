@@ -43,7 +43,15 @@
  * The worst-case running time is O(N), but this is never repeated as the
  * data-structure will optimize itself with use.
  *
- * One application...
+ * One application of a DSF is as an easy way to generate a random spanning
+ * tree of a well connected graph.  Let a graph G(V,E) be a set of edges E
+ * and vertices V.  Add all vertices to a DSF.  Load all edges into a list L.
+ * Now, until size(L)==0, randomly remove an edge from L, span the vertices
+ * connected by the edge if they're not members of the same set in the DSF,
+ * then merge the sets containing those vertices if applicable.  The resulting
+ * span collection is now a random spanning tree of the graph.
+ *
+ * See "Introduction to Algorithms", by Cormen, Leiserson & Rivest, chapter 22.
  */
 
 /*-----------------------------------------------------------------------------
@@ -138,6 +146,7 @@ int dsetfTypeMerge(robj* subject, sds value_a, sds value_b) {
             return 0;
         else {
             /* Arbitrarily choose A over B.  It does not matter which we choose. */
+            /* TODO: Add union-by-rank optimization. */
             rep_b->rep = rep_a;
             dsf->card--;
             return 1;
