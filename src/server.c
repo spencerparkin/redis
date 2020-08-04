@@ -1280,7 +1280,7 @@ dictType objectKeyHeapPointerValueDictType = {
     dictVanillaFree            /* val destructor */
 };
 
-/* Set dictionary type. Keys are SDS strings, values are ot used. */
+/* Set dictionary type. Keys are SDS strings, values are not used. */
 dictType setDictType = {
     dictSdsHash,               /* hash function */
     NULL,                      /* key dup */
@@ -1288,6 +1288,16 @@ dictType setDictType = {
     dictSdsKeyCompare,         /* key compare */
     dictSdsDestructor,         /* key destructor */
     NULL                       /* val destructor */
+};
+
+/* DSF dictionary type. Keys are SDS strings, values are dsetf_element heap allocs. */
+dictType dsetfDictType = {
+    dictSdsHash,                /* hash function */
+    NULL,                       /* key dup */
+    NULL,                       /* val dup */
+    dictSdsKeyCompare,          /* key compare */
+    dictSdsDestructor,          /* key destructor */
+    dictVanillaFree             /* val destructor */
 };
 
 /* Sorted sets hash (note: a skiplist is used in addition to the hash table) */

@@ -459,6 +459,7 @@ typedef long long ustime_t; /* microsecond time type. */
 #define OBJ_SET 2       /* Set object. */
 #define OBJ_ZSET 3      /* Sorted set object. */
 #define OBJ_HASH 4      /* Hash object. */
+#define OBJ_DSF 5		/* Disjoint set forest object. */
 
 /* The "module" object type is a special one that signals that the object
  * is one directly managed by a Redis module. In this case the value points
@@ -909,6 +910,12 @@ typedef struct zset {
     dict *dict;
     zskiplist *zsl;
 } zset;
+
+/* Disjoint Set Forests */
+
+typedef struct dsetf_element {
+    dsetf_element* rep;
+} dsetf_element;
 
 typedef struct clientBufferLimitsConfig {
     unsigned long long hard_limit_bytes;
@@ -1564,6 +1571,7 @@ extern dictType hashDictType;
 extern dictType replScriptCacheDictType;
 extern dictType keyptrDictType;
 extern dictType modulesDictType;
+extern dictType dsetfDictType;
 
 /*-----------------------------------------------------------------------------
  * Functions prototypes
@@ -1779,6 +1787,7 @@ robj *createZsetObject(void);
 robj *createZsetZiplistObject(void);
 robj *createStreamObject(void);
 robj *createModuleObject(moduleType *mt, void *value);
+robj *createDisjointSetForestObject(void);
 int getLongFromObjectOrReply(client *c, robj *o, long *target, const char *msg);
 int checkType(client *c, robj *o, int type);
 int getLongLongFromObjectOrReply(client *c, robj *o, long long *target, const char *msg);
