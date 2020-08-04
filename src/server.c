@@ -398,6 +398,26 @@ struct redisCommand redisCommandTable[] = {
      "read-only random @set",
      0,NULL,1,1,1,0,0,0},
 
+    {"dsfadd",dsfaddCommand,2,
+     "write use-memory fast @dsf",
+     0,NULL,1,1,1,0,0,0 },
+
+    {"dsfrem",dsfremCommand,2,
+     "write slow @dsf",
+     0,NULL,1,1,1,0,0,0},
+
+    {"dsfarecomembers",dsfarecomembersCommand,4,
+     "read-only fast @dsf",
+     0,NULL,1,1,1,0,0,0},
+
+    {"dsfunion",dsfunionCommand,4,
+     "write fast @dsf",
+     0,NULL,1,1,1,0,0,0},
+
+    {"dsfcard",dsfcardCommand,2,
+     "read-only fast @dsf",
+     0,NULL,1,1,1,0,0,0},
+
     {"zadd",zaddCommand,-4,
      "write use-memory fast @sortedset",
      0,NULL,1,1,1,0,0,0},
