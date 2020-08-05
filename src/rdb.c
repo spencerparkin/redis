@@ -880,12 +880,12 @@ ssize_t rdbSaveObject(rio *rdb, robj *o, robj *key) {
                  * The stale pointers are never dereferenced; just used to reconstitute the trees.
                  */
                 
-                n = rdbWriteRaw(rdb, ele, sizeof(dsetf_element*));
+                n = rdbWriteRaw(rdb, &ele, sizeof(dsetf_element*));
                 if (n == -1)
                     break;
                 nwritten += n;
 
-                n = rdbWriteRaw(rdb, ele->rep, sizeof(dsetf_element*));
+                n = rdbWriteRaw(rdb, &(ele->rep), sizeof(dsetf_element*));
                 if (n == -1)
                     break;
                 nwritten += n;
