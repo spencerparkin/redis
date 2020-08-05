@@ -60,6 +60,7 @@
 
 static dsetf_element *findSetRep(dsetf_element *ele);
 static int sameSetRep(dsetf_element *ele_a, dsetf_element *ele_b);
+static dict* findSet(dsetf_element* given_ele, dsetf* dsf);
 
 /* Factory method to return a DSF that *can* hold a "value". */
 robj *dsetfTypeCreate(void) {
@@ -95,12 +96,83 @@ int dsetfTypeAdd(robj *subject, sds value) {
  * If it was the member of a singleton, then the singleton set is
  * removed from the DSF also.  Note that this always has O(N)
  * time-complexity, where N is the number of elements in the DSF.
- * Consequently, this operation is provided here for completeness.
- * It is not common to use in practice, nor is it encouraged.
+ * That may seem discouraging, but removal is not one of the
+ * useful features of a DSF.  Nevertheless, it is provided here
+ * for completeness.
  */
-int dsetfTypeRemove(robj* subject, sds value) {
-    // TODO: Write this.  It involves iterating the entire DSF dictionary to patch pointers.
+int dsetfTypeRemove(robj *subject, sds value) {
+    if (subject->encoding == OBJ_ENCODING_HT) {
+        dsetf *dsf = subject->ptr;
+        dictEntry* de = dictFind(dsf->d, value);
+        if (!de)
+            return -1;
+        
+        void *doomed_key = de->key;
+        dsetf_element *doomed_ele = (dsetf_element*)de->v.val;
+
+        /* The doomed element may or may not be the set representative.
+         * In any case, find an element that can safely serve as the
+         * new representative of the set.
+         */
+        dsetf_element *rep = NULL;
+        dict* set = findSet(doomed_ele, dsf);
+        dictIterator di = dictGetIterator(set);
+        while (rep == NULL) {
+            dictEntry *se = dictNext(di);
+            if (se == NULL)
+                break;
+            dsetf_element *ele = se->v.val;
+            if (ele != doomed_ele)
+                rep = ele;
+        }
+
+        /* Now simply point all set elements to the new representative.
+         */
+        if (rep != NULL)
+        {
+            di = dictGetIterator(dsf->d);
+            while (true) {
+                dictEntry *se = dictNext(di);
+                if (se == NULL)
+                    break;
+                dsetf_element *ele = se->v.val;
+                if (ele != rep)
+                    ele->rep = rep;
+            }
+            dictReleaseIterator(di);
+            rep->rep = NULL;
+            rep->rank = (dictSize(set) > 2) ? 2 : 1;
+        }
+
+        dictRelease(set);
+        dictDelete(dsf->d, doomed_key);
+        return 1;
+    } else {
+        serverPanic("Unknown DSF encoding");
+    }
     return 0;
+}
+
+/* Return the set in the DSF containing the given element.
+ *
+ * This must necessarily iterate all elements of the DSF,
+ * so it is not very efficient.  But again, determining the
+ * set containing a given element is not a key feature of
+ * the DSF data-structure.  Nevertheless, it is provided
+ * here for completeness.
+ */
+dict *dsetfTypeFindSet(robj *subject, sds value) {
+    if (subject->encoding == OBJ_ENCODING_HT) {
+        dsetf *dsf = subject->ptr;
+        dictEntry *de = dictFind(dsf->d, value);
+        if (!de)
+            return NULL;
+        return findSet((dsetf_element*)de->v.val, dsf);
+    }
+    else {
+        serverPanic("Unknown DSF encoding");
+    }
+    return NULL;
 }
 
 /* Tell us if the sets containing the two given elements are
@@ -365,6 +437,34 @@ void dsfsizeCommand(client *c) {
     addReplyLongLong(c, size);
 }
 
+void dsffindset(client *c) {
+    robj *dsf = lookupKeyRead(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        addReply(c, shared.czero);
+        return;
+    }
+
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    dict* set = dsetTypeFindSet(dsf, c->argv[1]);
+    if (set == NULL) {
+        addReply(c, shared.czero);
+    } else {
+        addReplyArrayLen(c, dictSize(set));
+        dictIterator *di = dictGetIterator(set);
+        while (true) {
+            dictEntry *de = dictNext(di);
+            if (de == NULL)
+                break;
+            addReplyBulkSds(c, de->key);
+        }
+        dictRelease(set);
+    }
+}
+
 static dsetf_element *findSetRep(dsetf_element *ele) {
     dsetf_element *rep = ele;
     while (rep->rep)
@@ -386,4 +486,23 @@ static dsetf_element *findSetRep(dsetf_element *ele) {
 
 static int sameSetRep(dsetf_element *ele_a, dsetf_element *ele_b) {
     return findSetRep(ele_a) == findSetRep(ele_b);
+}
+
+static dict *findSet(dsetf_element* given_ele, dsetf *dsf) {
+    /* Note that we use the set dictionary type here
+     * since we don't own the value memory in the dictionary.
+     */
+    dict *set = dictCreate(&setDictType, NULL);
+    dictIterator *di = dictGetIterator(dsf->d);
+    while (true) {
+        dictEntry *de = dictNext(di);
+        if (de == NULL)
+            break;
+        dsetf_element *ele = (dsetf_element*)de->v.val;
+        if (sameSetRep(given_ele, ele)) {
+            dictSetVal(set, dictAddRaw(set, de->key, NULL), ele);
+        }
+    }
+    dictReleaseIterator(di);
+    return set;
 }

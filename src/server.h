@@ -2314,6 +2314,7 @@ void dsfarecomembersCommand(client *c);
 void dsfunionCommand(client *c);
 void dsfcardCommand(client *c);
 void dsfsizeCommand(client *c);
+void dsffindsetCommand(client *c);
 void syncCommand(client *c);
 void flushdbCommand(client *c);
 void flushallCommand(client *c);

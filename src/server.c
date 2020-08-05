@@ -418,9 +418,13 @@ struct redisCommand redisCommandTable[] = {
      "read-only fast @dsf",
      0,NULL,1,1,1,0,0,0},
 
-    { "dsfsize",dsfsizeCommand,2,
+    {"dsfsize",dsfsizeCommand,2,
      "read-only fast @dsf",
-     0,NULL,1,1,1,0,0,0 },
+     0,NULL,1,1,1,0,0,0},
+
+    {"dsffindset",dsffindsetCommand,2,
+     "read-only @dsf",
+     0,NULL,1,1,1,0,0,0},
 
     {"zadd",zaddCommand,-4,
      "write use-memory fast @sortedset",
