@@ -62,6 +62,10 @@ static dsetf_element *findSetRep(dsetf_element *ele);
 static int sameSetRep(dsetf_element *ele_a, dsetf_element *ele_b);
 static dict* findSet(dsetf_element* given_ele, dsetf* dsf);
 
+// TODO: All commands seem to work, but server crashes on exit with "broken member."
+//       This will happen after just creating a DSF with one member, then exiting,
+//       so that seems to narrow things down a bit.
+
 /* Factory method to return a DSF that *can* hold a "value". */
 robj *dsetfTypeCreate(void) {
     return createDisjointSetForestObject();
