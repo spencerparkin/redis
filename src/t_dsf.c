@@ -478,7 +478,7 @@ void dsfrandmemberCommand(client* c) {
     }
 
     sds element = sdsempty();
-    if (1 != dsetTypeRandomElement(dsf, &element)) {
+    if (1 != dsetfTypeRandomElement(dsf, &element)) {
         addReply(c, shared.czero);
         return;
     }
