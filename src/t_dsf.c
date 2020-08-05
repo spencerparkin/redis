@@ -487,6 +487,7 @@ void dsfrandmemberCommand(client* c) {
 }
 
 static dsetf_element *findSetRep(dsetf_element *ele) {
+    serverAssert(ele != NULL);
     dsetf_element *rep = ele;
     while (rep->rep)
         rep = rep->rep;
@@ -498,9 +499,9 @@ static dsetf_element *findSetRep(dsetf_element *ele) {
      */
     while (ele->rep)
     {
-        dsetf_element *next_ele = ele->rep;
+        dsetf_element *parent = ele->rep;
         ele->rep = rep;
-        ele = next_ele;
+        ele = parent;
     }
     return ele;
 }
@@ -521,7 +522,7 @@ static dict *findSet(dsetf_element* given_ele, dsetf *dsf) {
             break;
         dsetf_element *ele = (dsetf_element*)de->v.val;
         if (sameSetRep(given_ele, ele)) {
-            dictSetVal(set, dictAddRaw(set, de->key, NULL), ele);
+            dictSetVal(set, dictAddRaw(set, sdsdup(de->key), NULL), ele);
         }
     }
     dictReleaseIterator(di);
