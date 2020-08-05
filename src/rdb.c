@@ -658,7 +658,7 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
         else
             serverPanic("Unknown hash encoding");
     case OBJ_DSF:
-        if (o_encoding == OBJ_ENCODING_HT)
+        if (o->encoding == OBJ_ENCODING_HT)
             return rdbSaveType(rdb, RDB_TYPE_DSF);
         else
             serverPanic("Unknown DSF encoding");
@@ -867,7 +867,7 @@ ssize_t rdbSaveObject(rio *rdb, robj *o, robj *key) {
                     break;
                 nwritten += n;
 
-                tsetf_element* ele = de->v.val;
+                dsetf_element* ele = de->v.val;
 
                 n = rdbWriteRaw(rdb, &ele->rank, sizeof(ele->rank));
                 if (n == -1)
@@ -880,12 +880,12 @@ ssize_t rdbSaveObject(rio *rdb, robj *o, robj *key) {
                  * The stale pointers are never dereferenced; just used to reconstitute the trees.
                  */
                 
-                n = rdbWriteRaw(rdb, ele, sizeof(tsetf_element*));
+                n = rdbWriteRaw(rdb, ele, sizeof(dsetf_element*));
                 if (n == -1)
                     break;
                 nwritten += n;
 
-                n = rdbWriteRaw(rdb, ele->rep, sizeof(tsetf_element*));
+                n = rdbWriteRaw(rdb, ele->rep, sizeof(dsetf_element*));
                 if (n == -1)
                     break;
                 nwritten += n;
