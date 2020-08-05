@@ -2061,8 +2061,9 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
         dsf->card = card;
         dsf->d = dictCreate(&dsetfDictType, NULL);
 
+        sds ele_name = NULL;
         for (i = 0; i < len; i++) {
-            sds ele_name = rdbGenericLoadStringObject(rdb, RDB_LOAD_SDS, NULL);
+            ele_name = rdbGenericLoadStringObject(rdb, RDB_LOAD_SDS, NULL);
             if (ele_name == NULL) {
                 dsf_loaded = false;
                 break;
@@ -2103,11 +2104,12 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
         }
 
         if (!dsf_loaded) {
+            sdsfree(ele_name);
             decrRefCount(o);
             return NULL;
         }
 
-        if (!dsetfTypeReconstitute(o)) {
+        if (!dsetfTypePatchPointers(o)) {
             decrRefCount(o);
             return NULL;
         }

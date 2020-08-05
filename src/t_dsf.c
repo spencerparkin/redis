@@ -310,11 +310,81 @@ unsigned long dsetfTypeCard(const robj* subject) {
     return 0L;
 }
 
-bool dsetfTypeReconstitute(robj* subject)
-{
-    // TODO: Write this.
+static uint64_t patchPointerDictTypeHash(const void* key) {
+    uint64_t value = uint64_t(key);
+    return dictGenHashFunction(&value, sizeof(value));
+}
 
-    return true;
+static int patchPointerDictTypeKeyCompare(void* privdata, const void* key1, const void* key2) {
+    if (uint64_t(key1) < uint64_t(key2))
+        return -1;
+    if (uint64_t(key1) > uint64_t(key2))
+        return 1;
+    return 0;
+}
+
+/* Patch current element value pointers using the stale pointer data.
+ *
+ * To keep this better than O(N^2), we first build an index.  This will
+ * give us a running time of O(N ln N).
+ */
+bool dsetfTypePatchPointers(robj* subject)
+{
+    dictType patchPointerDictType = {
+        patchPointerDictTypeHash,
+        NULL,
+        NULL,
+        patchPointerDictTypeKeyCompare,
+        NULL,
+        NULL
+    };
+
+    dict* d = dictCreate(&patchPointerDictType, NULL);
+    bool patch_succeded = true;
+
+    /* Build a map from bad pointers to good pointers.
+     */
+    dsetf* dsf = subject->ptr;
+    dictIterator* di = dictGetIterator(dsf->d);
+    while (true) {
+        dictEntry* de = dictNext(di);
+        if (!de)
+            break;
+
+        dsetf_element* ele = de->v.val;
+        if (DICT_OK != dictAdd(d, ele->stale_ele, ele)) {
+            patch_succeeded = false;
+            break;
+        }
+    }
+    dictReleaseIterator(di);
+
+    /* Now use the map to patch representative pointers.
+     */
+    if (patch_succeeded) {
+        dictIterator* di = dictGetIterator(dsf->d);
+        while (true) {
+            dictEntry* de = dictNext(di);
+            if (!de)
+                break;
+
+            dsetf_element* ele = de->v.val;
+            dictEntry* map_de = dictFind(d, ele->stale_rep);
+            if (!map_de) {
+                patch_succeeded = false;
+                break;
+            }
+
+            ele->rep = map_de->v.val;
+            ele->stale_ele = NULL;
+            ele->stale_rep = NULL;
+        }
+        dictReleaseIterator(di);
+    }
+
+    dictRelease(d);
+
+    return patch_succeeded;
 }
 
 /*-----------------------------------------------------------------------------

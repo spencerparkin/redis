@@ -2058,7 +2058,7 @@ int dsetfTypeAreComembers(robj *subject, sds value_a, sds value_b);
 int dsetfTypeMerge(robj *subject, sds value_a, sds value_b);
 int dsetfTypeRandomElement(robj *subject, sds* sdsele);
 unsigned long dsetfTypeSize(const robj *subject);
-bool dsetfTypeReconstitute(robj* subject);
+bool dsetfTypePatchPointers(robj* subject);
 
 /* Hash data type */
 #define HASH_SET_TAKE_FIELD (1<<0)
