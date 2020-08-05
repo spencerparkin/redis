@@ -449,7 +449,7 @@ void dsffindsetCommand(client *c) {
         return;
     }
 
-    dict* set = dsetfTypeFindSet(dsf, c->argv[1]->ptr);
+    dict* set = dsetfTypeFindSet(dsf, c->argv[2]->ptr);
     if (set == NULL) {
         addReply(c, shared.czero);
     } else {
