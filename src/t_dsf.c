@@ -114,36 +114,47 @@ int dsetfTypeRemove(robj *subject, sds value) {
          * In any case, find an element that can safely serve as the
          * new representative of the set.
          */
-        dsetf_element *rep = NULL;
+        void* rep_key = NULL;
         dict* set = findSet(doomed_ele, dsf);
+        serverAssert(set != NULL);
         dictIterator *di = dictGetIterator(set);
-        while (rep == NULL) {
+        while (true) {
             dictEntry *se = dictNext(di);
             if (se == NULL)
                 break;
-            dsetf_element *ele = se->v.val;
-            if (ele != doomed_ele)
-                rep = ele;
+            if (0 != sdscmp(se->key, doomed_key)) {
+                rep_key = se->key;
+                break;
+            }
         }
+        dictReleaseIterator(di);
 
         /* Now simply point all set elements to the new representative.
          */
-        if (rep != NULL)
+        if (rep_key != NULL)
         {
+            de = dictFind(dsf->d, rep_key);
+            serverAssert(de != NULL);
+            dsetf_element *rep_ele = de->v.val;
+
             di = dictGetIterator(dsf->d);
             while (true) {
                 dictEntry *se = dictNext(di);
                 if (se == NULL)
                     break;
                 dsetf_element *ele = se->v.val;
-                if (ele != rep)
-                    ele->rep = rep;
+                if (ele != rep_ele)
+                    ele->rep = rep_ele;
             }
             dictReleaseIterator(di);
-            rep->rep = NULL;
-            rep->rank = (dictSize(set) > 2) ? 2 : 1;
+
+            rep_ele->rep = NULL;
+            rep_ele->rank = (dictSize(set) > 2) ? 2 : 1;
         }
 
+        /* At this point, no set elements should be pointing to
+         * the doomed element, so it should be safe to delete it.
+         */
         dictRelease(set);
         dictDelete(dsf->d, doomed_key);
         return 1;
