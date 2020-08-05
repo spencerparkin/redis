@@ -370,15 +370,18 @@ bool dsetfTypePatchPointers(robj* subject)
                 break;
 
             dsetf_element* ele = de->v.val;
-            dictEntry* map_de = dictFind(d, ele->stale_rep);
-            if (!map_de) {
-                patch_succeeded = false;
-                break;
+            if (ele->stale_rep != NULL) {
+                dictEntry* map_de = dictFind(d, ele->stale_rep);
+                if (!map_de) {
+                    patch_succeeded = false;
+                    break;
+                }
+
+                ele->rep = map_de->v.val;
+                ele->stale_rep = NULL;
             }
 
-            ele->rep = map_de->v.val;
             ele->stale_ele = NULL;
-            ele->stale_rep = NULL;
         }
         dictReleaseIterator(di);
     }
