@@ -459,7 +459,7 @@ void dsffindsetCommand(client *c) {
             dictEntry *de = dictNext(di);
             if (de == NULL)
                 break;
-            addReplyBulkSds(c, de->key);
+            addReplyBulkSds(c, sdsdup(de->key));
         }
         dictRelease(set);
     }
