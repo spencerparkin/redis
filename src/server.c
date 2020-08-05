@@ -428,7 +428,7 @@ struct redisCommand redisCommandTable[] = {
 
     {"dsfrandmember",dsfrandmemberCommand,2,
      "read-only random fast @dsf",
-     0,NULL,1,1,1,0,0,0}
+     0,NULL,1,1,1,0,0,0},
 
     {"zadd",zaddCommand,-4,
      "write use-memory fast @sortedset",
