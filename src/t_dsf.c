@@ -483,7 +483,7 @@ void dsfrandmemberCommand(client* c) {
         return;
     }
 
-    addReplyBulkSds(c, element);
+    addReplyBulkSds(c, sdsdup(element));
 }
 
 static dsetf_element *findSetRep(dsetf_element *ele) {
