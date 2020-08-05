@@ -163,7 +163,7 @@ volatile unsigned long lru_clock; /* Server global current LRU time. */
  *
  * @keyspace, @read, @write, @set, @sortedset, @list, @hash, @string, @bitmap,
  * @hyperloglog, @stream, @admin, @fast, @slow, @pubsub, @blocking, @dangerous,
- * @connection, @transaction, @scripting, @geo.
+ * @connection, @transaction, @scripting, @geo, @dsf.
  *
  * Note that:
  *
@@ -398,12 +398,12 @@ struct redisCommand redisCommandTable[] = {
      "read-only random @set",
      0,NULL,1,1,1,0,0,0},
 
-    {"dsfadd",dsfaddCommand,2,
+    {"dsfadd",dsfaddCommand,-3,
      "write use-memory fast @dsf",
      0,NULL,1,1,1,0,0,0 },
 
-    {"dsfrem",dsfremCommand,2,
-     "write slow @dsf",
+    {"dsfrem",dsfremCommand,-3,
+     "write use-memory @dsf",
      0,NULL,1,1,1,0,0,0},
 
     {"dsfarecomembers",dsfarecomembersCommand,4,
@@ -411,7 +411,7 @@ struct redisCommand redisCommandTable[] = {
      0,NULL,1,1,1,0,0,0},
 
     {"dsfunion",dsfunionCommand,4,
-     "write fast @dsf",
+     "write use-memory fast @dsf",
      0,NULL,1,1,1,0,0,0},
 
     {"dsfcard",dsfcardCommand,2,
@@ -422,9 +422,13 @@ struct redisCommand redisCommandTable[] = {
      "read-only fast @dsf",
      0,NULL,1,1,1,0,0,0},
 
-    {"dsffindset",dsffindsetCommand,2,
+    {"dsffindset",dsffindsetCommand,3,
      "read-only @dsf",
      0,NULL,1,1,1,0,0,0},
+
+    {"dsfrandmember",dsfrandmemberCommand,2
+     "read-only random fast @dsf",
+     0,NULL,1,1,1,0,0,0}
 
     {"zadd",zaddCommand,-4,
      "write use-memory fast @sortedset",

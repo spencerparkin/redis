@@ -465,6 +465,27 @@ void dsffindsetCommand(client *c) {
     }
 }
 
+void dsfrandmemberCommand(client* c) {
+    robj* dsf = lookupKeyRead(c->db, c->argv[1]);
+    if (dsf == NULL) {
+        addReply(c, shared.czero);
+        return;
+    }
+
+    if (dsf->type != OBJ_DSF) {
+        addReply(c, shared.wrongtypeerr);
+        return;
+    }
+
+    sds element = sdsempty();
+    if (1 != dsetTypeRandomElement(dsf, &element)) {
+        addReply(c, shared.czero);
+        return;
+    }
+
+    addReplyBulkSds(c, element);
+}
+
 static dsetf_element *findSetRep(dsetf_element *ele) {
     dsetf_element *rep = ele;
     while (rep->rep)
