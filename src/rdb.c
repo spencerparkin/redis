@@ -657,6 +657,11 @@ int rdbSaveObjectType(rio *rdb, robj *o) {
             return rdbSaveType(rdb,RDB_TYPE_HASH);
         else
             serverPanic("Unknown hash encoding");
+    case OBJ_DSF:
+        if (o_encoding == OBJ_ENCODING_HT)
+            return rdbSaveType(rdb, RDB_TYPE_DSF);
+        else
+            serverPanic("Unknown DSF encoding");
     case OBJ_STREAM:
         return rdbSaveType(rdb,RDB_TYPE_STREAM_LISTPACKS);
     case OBJ_MODULE:
@@ -833,6 +838,64 @@ ssize_t rdbSaveObject(rio *rdb, robj *o, robj *key) {
             nwritten += n;
         } else {
             serverPanic("Unknown set encoding");
+        }
+    } else if(o->type == OBJ_DSF) {
+        if (o->encoding == OBJ_ENCODING_HT) {
+            dsetf* dsf = o->ptr;
+            dictIterator* di = NULL;
+            dictEntry* de = NULL;
+
+            n = rdbSaveLen(rdb, dictSize(dsf->d));
+            if (n == -1)
+                return -1;
+            nwritten += n;
+
+            n = rdbSaveLen(rdb, dsf->card);
+            if (n == -1)
+                return -1;
+            nwritten += n;
+
+            di = dictGetIterator(dsf->d);
+            while (true) {
+                de = dictNext(di);
+                if (!de)
+                    break;
+                
+                sds ele_name = dictGetKey(de);
+                n = rdbSaveRawString(rdb, (unsigned char*)ele_name, sdslen(ele_name));
+                if (n == -1)
+                    break;
+                nwritten += n;
+
+                tsetf_element* ele = de->v.val;
+
+                n = rdbWriteRaw(rdb, &ele->rank, sizeof(ele->rank));
+                if (n == -1)
+                    break;
+                nwritten += n;
+
+                /* We now serialize the element pointer and its representative pointer.
+                 * Yes, these pointers are stale once the server shuts down, but that doesn't matter.
+                 * What they do is simply provide an easy means of restructuring the trees in the DSF.
+                 * The stale pointers are never dereferenced; just used to reconstitute the trees.
+                 */
+                
+                n = rdbWriteRaw(rdb, ele, sizeof(tsetf_element*));
+                if (n == -1)
+                    break;
+                nwritten += n;
+
+                n = rdbWriteRaw(rdb, ele->rep, sizeof(tsetf_element*));
+                if (n == -1)
+                    break;
+                nwritten += n;
+            }
+            dictReleaseIterator(di);
+
+            if (n == -1)
+                return -1;
+        } else {
+            serverPanic("Unknown DSF encoding");
         }
     } else if (o->type == OBJ_ZSET) {
         /* Save a sorted set value */
@@ -1982,6 +2045,72 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
             exit(1);
         }
         o = createModuleObject(mt,ptr);
+    } else if(rdbtype == RDB_TYPE_DSF) {
+        bool dsf_loaded = true;
+
+        len = rdbLoadLen(rdb, NULL);
+        if (len == RDB_LENERR)
+            return NULL;
+
+        unsigned long card = rdbLoadlen(rdb, NULL);
+        if (len == RDB_LENERR)
+            return NULL;
+
+        o = createDisjointSetForestObject();
+        dsetf* dsf = o->ptr;
+        dsf->card = card;
+        dsf->d = dictCreate(&dsetfDictType, NULL);
+
+        for (i = 0; i < len; i++) {
+            sds ele_name = rdbGenericLoadStringObject(rdb, RDB_LOAD_SDS, NULL);
+            if (ele_name == NULL) {
+                dsf_loaded = false;
+                break;
+            }
+
+            unsigned int rank = 0;
+            if (-1 == rioRead(rdb, &rank, sizof(rank))) {
+                dsf_loaded = false;
+                break;
+            }
+
+            dsetf_element* stale_ele = NULL;
+            if (-1 == rioRead(rdb, &stale_ele, sizeof(dsetf_element*))) {
+                dsf_loaded = false;
+                break;
+            }
+
+            dsetf_element* stale_rep = NULL;
+            if (-1 == rioRead(rdb, &stale_rep, SIZEOF(dsetf_element*))) {
+                dsf_loaded = false;
+                break;
+            }
+
+            dsetf_element* dsf_ele = zmalloc(sizeof(dsetf_element));
+            dsf_ele->rep = NULL;
+            dsf_ele->rank = rank;
+            dsf_ele->stale_ele = stale_ele;
+            dsf_ele->stale_rep = stale_rep;
+
+            dictEntry* de = dictAddRaw(dsf->d, ele_name);
+            if (!de) {
+                zfree(dsf_ele);
+                dsf_loaded = false;
+                break;
+            }
+
+            dictSetVal(dsf->d, de, dsf_ele);
+        }
+
+        if (!dsf_loaded) {
+            decrRefCount(o);
+            return NULL;
+        }
+
+        if (!dsetfTypeReconstitute(o)) {
+            decrRefCount(o);
+            return NULL;
+        }
     } else {
         rdbReportReadError("Unknown RDB encoding type %d",rdbtype);
         return NULL;
