@@ -116,7 +116,7 @@ int dsetfTypeRemove(robj *subject, sds value) {
          */
         dsetf_element *rep = NULL;
         dict* set = findSet(doomed_ele, dsf);
-        dictIterator di = dictGetIterator(set);
+        dictIterator *di = dictGetIterator(set);
         while (rep == NULL) {
             dictEntry *se = dictNext(di);
             if (se == NULL)
