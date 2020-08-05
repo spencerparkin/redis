@@ -437,7 +437,7 @@ void dsfsizeCommand(client *c) {
     addReplyLongLong(c, size);
 }
 
-void dsffindset(client *c) {
+void dsffindsetCommand(client *c) {
     robj *dsf = lookupKeyRead(c->db, c->argv[1]);
     if (dsf == NULL) {
         addReply(c, shared.czero);
