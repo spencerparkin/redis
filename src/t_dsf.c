@@ -94,7 +94,7 @@ int dsetfTypeAdd(robj *subject, sds value) {
 /* Remove the specified element from the DSF.
  *
  * If it was the member of a singleton, then the singleton set is
- * removed from the DSF also.  Note that this always has O(N)
+ * removed from the DSF also.  Note that this always has O(N ln N)
  * time-complexity, where N is the number of elements in the DSF.
  * That may seem discouraging, but removal is not one of the
  * useful features of a DSF.  Nevertheless, it is provided here
@@ -137,12 +137,16 @@ int dsetfTypeRemove(robj *subject, sds value) {
             serverAssert(de != NULL);
             dsetf_element *rep_ele = de->v.val;
 
-            di = dictGetIterator(dsf->d);
+            di = dictGetIterator(set);
             while (true) {
                 dictEntry *se = dictNext(di);
                 if (se == NULL)
                     break;
-                dsetf_element *ele = se->v.val;
+                
+                de = dictFind(dsf->d, se->key);
+                serverAssert(de != NULL);
+                dsetf_element *ele = de->v.val;
+                
                 if (ele != rep_ele)
                     ele->rep = rep_ele;
             }
