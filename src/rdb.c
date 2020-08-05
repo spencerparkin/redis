@@ -2052,7 +2052,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
         if (len == RDB_LENERR)
             return NULL;
 
-        unsigned long card = rdbLoadlen(rdb, NULL);
+        unsigned long card = rdbLoadLen(rdb, NULL);
         if (len == RDB_LENERR)
             return NULL;
 
@@ -2070,7 +2070,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
             }
 
             unsigned int rank = 0;
-            if (-1 == rioRead(rdb, &rank, sizof(rank))) {
+            if (-1 == rioRead(rdb, &rank, sizeof(rank))) {
                 dsf_loaded = false;
                 break;
             }
@@ -2082,7 +2082,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
             }
 
             dsetf_element* stale_rep = NULL;
-            if (-1 == rioRead(rdb, &stale_rep, SIZEOF(dsetf_element*))) {
+            if (-1 == rioRead(rdb, &stale_rep, sizeof(dsetf_element*))) {
                 dsf_loaded = false;
                 break;
             }
