@@ -2070,19 +2070,19 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
             }
 
             unsigned int rank = 0;
-            if (-1 == rioRead(rdb, &rank, sizeof(rank))) {
+            if (0 == rioRead(rdb, &rank, sizeof(rank))) {
                 dsf_loaded = false;
                 break;
             }
 
             dsetf_element* stale_ele = NULL;
-            if (-1 == rioRead(rdb, &stale_ele, sizeof(dsetf_element*))) {
+            if (0 == rioRead(rdb, &stale_ele, sizeof(dsetf_element*))) {
                 dsf_loaded = false;
                 break;
             }
 
             dsetf_element* stale_rep = NULL;
-            if (-1 == rioRead(rdb, &stale_rep, sizeof(dsetf_element*))) {
+            if (0 == rioRead(rdb, &stale_rep, sizeof(dsetf_element*))) {
                 dsf_loaded = false;
                 break;
             }
@@ -2093,7 +2093,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
             dsf_ele->stale_ele = stale_ele;
             dsf_ele->stale_rep = stale_rep;
 
-            dictEntry* de = dictAddRaw(dsf->d, ele_name);
+            dictEntry* de = dictAddRaw(dsf->d, ele_name, NULL);
             if (!de) {
                 zfree(dsf_ele);
                 dsf_loaded = false;
