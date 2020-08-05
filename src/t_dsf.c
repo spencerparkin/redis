@@ -311,14 +311,15 @@ unsigned long dsetfTypeCard(const robj* subject) {
 }
 
 static uint64_t patchPointerDictTypeHash(const void* key) {
-    uint64_t value = uint64_t(key);
+    uint64_t value = (uint64_t)key;
     return dictGenHashFunction(&value, sizeof(value));
 }
 
 static int patchPointerDictTypeKeyCompare(void* privdata, const void* key1, const void* key2) {
-    if (uint64_t(key1) < uint64_t(key2))
+    UNUSED(privdata);
+    if ((uint64_t)key1 < (uint64_t)key2)
         return -1;
-    if (uint64_t(key1) > uint64_t(key2))
+    if ((uint64_t)key1 > (uint64_t)key2)
         return 1;
     return 0;
 }
@@ -340,7 +341,7 @@ bool dsetfTypePatchPointers(robj* subject)
     };
 
     dict* d = dictCreate(&patchPointerDictType, NULL);
-    bool patch_succeded = true;
+    bool patch_succeeded = true;
 
     /* Build a map from bad pointers to good pointers.
      */
