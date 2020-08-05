@@ -77,7 +77,7 @@ int dsetfTypeAdd(robj *subject, sds value) {
         dsetf *dsf = subject->ptr;
         dictEntry *de = dictAddRaw(dsf->d, value, NULL);
         if (de) {
-            dictSetKey(dsf->d, de, sdsdup(value)); /* Why? */
+            dictSetKey(dsf->d, de, sdsdup(value)); /* Must dup since we want to own the memory here. */
             dsetf_element *dsf_ele = zmalloc(sizeof(dsetf_element));
             dsf_ele->rep = NULL;
             dsf_ele->rank = 1;
