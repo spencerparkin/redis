@@ -2053,7 +2053,7 @@ robj *rdbLoadObject(int rdbtype, rio *rdb, sds key) {
             return NULL;
 
         unsigned long card = rdbLoadLen(rdb, NULL);
-        if (len == RDB_LENERR)
+        if (card == RDB_LENERR)
             return NULL;
 
         o = createDisjointSetForestObject();
