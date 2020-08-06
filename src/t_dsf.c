@@ -317,11 +317,7 @@ static uint64_t patchPointerDictTypeHash(const void* key) {
 
 static int patchPointerDictTypeKeyCompare(void* privdata, const void* key1, const void* key2) {
     UNUSED(privdata);
-    if ((uint64_t)key1 < (uint64_t)key2)
-        return -1;
-    if ((uint64_t)key1 > (uint64_t)key2)
-        return 1;
-    return 0;
+    return key1 == key2 ? 1 : 0;
 }
 
 /* Patch current element value pointers using the stale pointer data.
